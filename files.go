@@ -1,11 +1,13 @@
 package main
 
-import "time"
-import "path"
-import "golang.org/x/exp/inotify"
-import "log"
-import "regexp"
-import "os"
+import (
+	"golang.org/x/exp/inotify"
+	"log"
+	"os"
+	"path"
+	"regexp"
+	"time"
+)
 
 func touchFile(file string) error {
 	if _, err := os.Stat(file); os.IsNotExist(err) {
@@ -42,15 +44,4 @@ func waitFileFor(channel chan bool, file string, signal uint32) {
 			log.Fatal(err)
 		}
 	}
-}
-
-func ensureRunningPostgresMaster() {
-	// Remove triggerFile
-	// TODO see if postgresql.trigger gets changed to postgresql.done
-	// err = os.Remove(triggerFilePath)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// Start PostgreSQL master
 }

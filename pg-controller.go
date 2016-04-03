@@ -1,11 +1,13 @@
 package main
 
-import "fmt"
-import "regexp"
-import "golang.org/x/exp/inotify"
-import "os"
-import "log"
-import "strings"
+import (
+	"fmt"
+	"golang.org/x/exp/inotify"
+	"log"
+	"os"
+	"regexp"
+	"strings"
+)
 
 func main() {
 

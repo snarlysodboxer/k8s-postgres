@@ -1,10 +1,12 @@
 package main
 
-import "os/exec"
-import "testing"
-import "time"
-import "os"
-import "golang.org/x/exp/inotify"
+import (
+	"golang.org/x/exp/inotify"
+	"os"
+	"os/exec"
+	"testing"
+	"time"
+)
 
 func TestTouchFile(test *testing.T) {
 	testFile := "./testFile.file"
@@ -85,7 +87,6 @@ func TestWaitFileFor(test *testing.T) {
 	}
 
 	for _, testSet := range testSets {
-		test.Logf("testSet %s", testSet)
 		// setup watch
 		testChan := make(chan bool)
 		go waitFileFor(testChan, testFile, testSet.Signal)

@@ -34,21 +34,23 @@ func main() {
 		//// Is Master
 
 		// Create triggerFilePath
-		err := touchFile(triggerFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+		triggerFile := new(signalFile)
+		triggerFile.File = os.NewFile(0, triggerFilePath)
+		triggerFile.Touch()
 
 		// Create shutdownFilePath
-		err = touchFile(shutdownFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
+		shutdownFile := new(signalFile)
+		shutdownFile.File = os.NewFile(0, shutdownFilePath)
+		shutdownFile.Touch()
 
 		// Wait for shutdownSuccessFilePath to appear
-		shutdownSuccessChan := make(chan bool, 1)
-		go waitFileFor(shutdownSuccessChan, shutdownSuccessFilePath, inotify.IN_CLOSE_WRITE)
-		<-shutdownSuccessChan
+		shutdownSuccessFile := new(signalFile)
+		shutdownSuccessFile.File = os.NewFile(0, shutdownSuccessFilePath)
+		shutdownSuccessFile.Channel = make(chan bool)
+		defer close(shutdownSuccessFile.Channel)
+		shutdownSuccessFile.Signal = inotify.IN_CLOSE_WRITE
+		go shutdownSuccessFile.WaitForSignal()
+		<-shutdownSuccessFile.Channel
 
 		// Ensure Postgres Running as Master
 		ensureRunningPostgresMaster()

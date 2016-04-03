@@ -3,129 +3,135 @@ package main
 import (
 	"golang.org/x/exp/inotify"
 	"os"
-	"os/exec"
 	"testing"
 	"time"
 )
 
-func TestTouchFile(test *testing.T) {
-	testFile := "./testFile.file"
+// Test new file creation
+func TestTouchNew(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileTouchNew.file")
 
-	// Remove any existing testFile
-	if _, err := os.Stat(testFile); err == nil {
-		err := os.Remove(testFile)
-		if err != nil {
-			test.Fatal(err)
-		}
-	}
+	// Remove any existing
+	testFile.Remove()
 
-	// Test new file creation
-	err := touchFile(testFile)
-	if err != nil {
-		test.Fatal(err)
-	}
-	if _, err := os.Stat(testFile); err != nil {
+	// Create
+	testFile.Touch()
+	if _, err := os.Stat(testFile.File.Name()); err != nil {
 		test.Fatal("File was not created")
 	}
+	// Cleanup
+	testFile.Remove()
+}
 
-	// Test existing file updation
-	file, err := os.Stat(testFile)
+// Test existing file updation
+func TestTouchExisting(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileTouch.file")
+
+	// Create
+	testFile.Touch()
+
+	// Test
+	file, err := os.Stat(testFile.File.Name())
 	if err != nil {
 		test.Fatal(err)
 	}
 	mtime := file.ModTime()
-	err = touchFile(testFile)
-	if err != nil {
-		test.Fatal(err)
-	}
-	file, err = os.Stat(testFile)
+	time.Sleep(500 * time.Millisecond)
+	testFile.Touch()
+	file, err = os.Stat(testFile.File.Name())
 	if err != nil {
 		test.Fatal(err)
 	}
 	if file.ModTime() == mtime {
-		test.Fatal("Mtime was not updated")
+		test.Fatalf("Mtime was not updated, mtime: %s file.ModTime(): %s", mtime, file.ModTime())
 	} else {
 		test.Logf("Mtime was updated from %s to %s", mtime, file.ModTime())
 	}
 
 	// Cleanup
-	err = os.Remove(testFile)
-	if err != nil {
-		test.Fatal(err)
+	testFile.Remove()
+}
+
+// Test Remove
+func TestRemove(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileRemove.file")
+	testFile.Touch()
+	testFile.Remove()
+	if _, err := os.Stat(testFile.File.Name()); err == nil {
+		test.Fatal("File was not removed")
 	}
 }
 
-type testFileWait struct {
-	Signal         uint32
-	Command        string
-	CommandOptions []string
+// Test file creation - inotify.IN_CLOSE_WRITE
+func TestWaitForSignalCreate(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileCreate.file")
+	testFile.Signal = inotify.IN_CLOSE_WRITE
+	testFile.Channel = make(chan bool)
+	defer close(testFile.Channel)
+
+	// Ensure file deoesn't exist
+	testFile.Remove()
+
+	// Setup watch
+	go testFile.WaitForSignal()
+
+	// Setup timeout
+	timeout := make(chan bool)
+	defer close(timeout)
+	go func() {
+		time.Sleep(1 * time.Second)
+		timeout <- true
+	}()
+
+	// Create file
+	testFile.Touch()
+
+	// Setup channel receive
+	select {
+	case <-testFile.Channel:
+		test.Logf("Received create signal for test file %s", testFile.File.Name())
+	case <-timeout:
+		test.Fatalf("Received no create signal after 1 second for test file %s", testFile.File.Name())
+	}
+
+	// Cleanup
+	testFile.Remove()
 }
 
-func TestWaitFileFor(test *testing.T) {
-	testFile := "testWatchFile.file"
+// Test file deletion - inotify.IN_DELETE
+func TestWaitForSignalDelete(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileDelete.file")
+	testFile.Signal = inotify.IN_DELETE
+	testFile.Channel = make(chan bool)
+	defer close(testFile.Channel)
 
-	//// test file creation - inotify.IN_CLOSE_WRITE
-	testSet1 := new(testFileWait)
-	testSet1.Signal = inotify.IN_CLOSE_WRITE
-	testSet1.Command = "touch"
-	testSet1.CommandOptions = []string{testFile}
-	//// test file deletion - inotify.IN_DELETE
-	testSet2 := new(testFileWait)
-	testSet2.Signal = inotify.IN_DELETE
-	testSet2.Command = "rm"
-	testSet2.CommandOptions = []string{"-f", testFile}
+	// Create file
+	testFile.Touch()
 
-	testSets := []*testFileWait{testSet1, testSet2}
-	// testSets := []*testFileWait{testSet2, testSet1} // reversing breaks, since the second run expects the file to exist already
+	// Setup watch
+	go testFile.WaitForSignal()
 
-	// ensure file deoesn't exist
-	if _, err := os.Stat(testFile); err == nil {
-		err = os.Remove(testFile)
-		if err != nil {
-			test.Fatal(err)
-		}
+	// Setup timeout
+	timeout := make(chan bool)
+	defer close(timeout)
+	go func() {
+		time.Sleep(1 * time.Second)
+		timeout <- true
+	}()
+
+	// Remove file
+	testFile.Remove()
+
+	// Setup channel receive
+	select {
+	case <-testFile.Channel:
+		test.Logf("Received remove signal for test file %s", testFile.File.Name())
+	case <-timeout:
+		test.Fatalf("Received no remove signal after 1 second for test file %s", testFile.File.Name())
 	}
-
-	for _, testSet := range testSets {
-		// setup watch
-		testChan := make(chan bool)
-		go waitFileFor(testChan, testFile, testSet.Signal)
-
-		// setup timeout
-		timeout := make(chan bool)
-		go func() {
-			time.Sleep(1 * time.Second)
-			timeout <- true
-		}()
-
-		// create/remove file
-		go func() {
-			cmd := exec.Command(testSet.Command, testSet.CommandOptions...)
-			err := cmd.Start()
-			if err != nil {
-				test.Fatal(err)
-			}
-			err = cmd.Wait()
-			if err != nil {
-				test.Fatalf("Command finished with error: %v", err)
-			}
-		}()
-
-		// setup channel receive
-		select {
-		case <-testChan:
-			test.Logf("Received signal for test file %s", testFile)
-		case <-timeout:
-			test.Fatalf("Received no signal after 2 seconds for test file %s", testFile)
-		}
-	}
-
-	// cleanup
-	if _, err := os.Stat(testFile); err == nil {
-		err := os.Remove(testFile)
-		if err != nil {
-			test.Fatal(err)
-		}
-	}
-
 }

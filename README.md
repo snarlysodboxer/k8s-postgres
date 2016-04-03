@@ -9,6 +9,7 @@ master/slaves can be started in either order
 replicas: 1
 use PreStop to `rm /postgres/SHUTDOWN_SLAVE /postgres/SHUTDOWN_SLAVE_SUCCESSFUL` (in case a node comes back online after a network outage)
 
+ensure POSTGRES_MODE is set
 `touch /postgres/data/postgresql.trigger`? (not sure if this is needed...)
 `touch /postgres/SHUTDOWN_SLAVE`
 wait for `/postgres/SHUTDOWN_SLAVE_SUCCESSFUL` to appear
@@ -33,3 +34,11 @@ else:
 watch for `/postgres/SHUTDOWN_SLAVE`, if it appears:
   shutdown postgresql and wait for full exit
   `touch /postgres/SHUTDOWN_SLAVE_SUCCESSFUL`
+
+#### TODO
+* convert to tmpfs for testing file actions
+* use native go instead of shelling-out
+
+### Currently we shell-out and rely on the following commands:
+* rm
+* touch

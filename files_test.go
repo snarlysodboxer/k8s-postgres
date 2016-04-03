@@ -53,7 +53,7 @@ func TestTouchFile(test *testing.T) {
 	}
 }
 
-type fileWait struct {
+type testFileWait struct {
 	Signal         uint32
 	Command        string
 	CommandOptions []string
@@ -63,18 +63,18 @@ func TestWaitFileFor(test *testing.T) {
 	testFile := "testWatchFile.file"
 
 	//// test file creation - inotify.IN_CLOSE_WRITE
-	testSet1 := new(fileWait)
+	testSet1 := new(testFileWait)
 	testSet1.Signal = inotify.IN_CLOSE_WRITE
 	testSet1.Command = "touch"
 	testSet1.CommandOptions = []string{testFile}
 	//// test file deletion - inotify.IN_DELETE
-	testSet2 := new(fileWait)
+	testSet2 := new(testFileWait)
 	testSet2.Signal = inotify.IN_DELETE
 	testSet2.Command = "rm"
 	testSet2.CommandOptions = []string{"-f", testFile}
 
-	testSets := []*fileWait{testSet1, testSet2}
-	// testSets := []*fileWait{testSet2, testSet1} // reversing breaks, since the second run expects the file to exist already
+	testSets := []*testFileWait{testSet1, testSet2}
+	// testSets := []*testFileWait{testSet2, testSet1} // reversing breaks, since the second run expects the file to exist already
 
 	// ensure file deoesn't exist
 	if _, err := os.Stat(testFile); err == nil {

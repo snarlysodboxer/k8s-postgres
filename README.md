@@ -9,9 +9,11 @@
 * Master and Slave share the same data volume (probably `hostPath`, could be a data container) where postgres data is stored.
 * Master/Slaves can be started in either order.
 * Master:
+
 > * Use `ReplicationController`
 > * Set `replicas: 1`
 * Slave:
+
 > * Use `DaemonSet`
 > * Use `healthCheck` for reinitiation
 > * Set pod IP in `/data/postgres/slave_ip` using:
@@ -48,7 +50,6 @@
 > * Create trigger file
 > * Check for and wait for `/data/postgres/slave_ip` to show
 > * Port Forward from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `cat /data/postgres/slave_ip`
-
 * If slave
 
 > * Wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQL_MASTER_SERVICE_HOST` and `POSTGRESQL_MASTER_SERVICE_PORT`)

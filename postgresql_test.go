@@ -8,5 +8,6 @@ import (
 	// "time"
 )
 
+// Test by exec pg_isready
 func TestEnsureRunningPostgresMaster(test *testing.T) {
 }

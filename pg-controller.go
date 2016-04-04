@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"syscall"
 )
 
 func main() {
@@ -16,6 +17,8 @@ func main() {
 	triggerFilePath := strings.Replace(fmt.Sprintf("%s/%s", postgresBaseDir, os.Getenv("SLAVE_TRIGGER_FILE")), "//", "/", -1)                  // "/data/postgres/postgresql.trigger"
 	shutdownFilePath := strings.Replace(fmt.Sprintf("%s/%s", postgresBaseDir, os.Getenv("SHUTDOWN_SLAVE_FILE")), "//", "/", -1)                // "/data/postgres/SHUTDOWN_SLAVE"
 	shutdownSuccessFilePath := strings.Replace(fmt.Sprintf("%s/%s", postgresBaseDir, os.Getenv("SHUTDOWN_SLAVE_SUCCESS_FILE")), "//", "/", -1) // "/data/postgres/SHUTDOWN_SLAVE_SUCCESS"
+	postgresEntrypoint := os.Getenv("POSTGRES_ENTRYPOINT")                                                                                     // "/usr/lib/postgresql/9.5/bin/postgres"
+	postgresOptions := os.Getenv("POSTGRES_OPTIONS")                                                                                           // "-D $PGDATA -c config_file=/data/postgres/conf/postgresql.conf-D $PGDATA -c config_file=/data/postgres/conf/postgresql.conf"
 
 	// Ensure `POSTGRES_MODE` is set
 	matched, err := regexp.MatchString(`(master|slave)`, postgresMode)
@@ -52,8 +55,8 @@ func main() {
 		go shutdownSuccessFile.WaitForSignal()
 		<-shutdownSuccessFile.Channel
 
-		// Ensure Postgres Running as Master
-		ensureRunningPostgresMaster()
+		// Start Postgres
+		syscall.Exec(postgresEntrypoint, []string{postgresOptions}, []string{})
 
 	} else {
 		//// Is Slave

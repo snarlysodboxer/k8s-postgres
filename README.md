@@ -1,44 +1,65 @@
-set up the Kubernetes controller manager with `--pod-eviction-timeout=30s` or something more reasonable for failover during node failure
+# A Highly Available Kubernetes PostgreSQL Setup
 
-create a 'postgresqlmaster' service before starting the ReplicationController or DaemonSet (so the proper environment variables will be created in the containers below)
-an optional 'postgresqlslave' service can be created to read the read-only slave instances in round robin
-master and slave share the same volume (probably hostPath)
-master/slaves can be started in either order
+###### This is experimental
 
-  master ReplicationController:
-replicas: 1
-use PreStop to `rm /postgres/SHUTDOWN_SLAVE /postgres/SHUTDOWN_SLAVE_SUCCESSFUL` (in case a node comes back online after a network outage)
+#### K8s:
+* Set up the Kubernetes controller manager with `--pod-eviction-timeout=30s` or something reasonable, as this will be the trigger for failover during a network outage where the Master is running.
+* Create a `postgresqlmaster` service before creating the `ReplicationController` or `DaemonSet`. This will ensure the proper environment variables will be created in the containers below.
+* An optional read-only `postgresqlslave` service can be created to read the slave instances in round robin.
+* Master and Slave share the same volume (probably `hostPath`.)
+* Master/Slaves can be started in either order.
 
-ensure POSTGRES_MODE is set
-`touch /postgres/data/postgresql.trigger`? (not sure if this is needed...)
-`touch /postgres/SHUTDOWN_SLAVE`
-wait for `/postgres/SHUTDOWN_SLAVE_SUCCESSFUL` to appear
-`rm /postgres/data/postgresql.trigger -rf`? (not sure if this is needed...)
-start postgresql as master
+### Environment Variable settings:
+| Env Var | Example Values |
+| --- | --- |
+| POSTGRES_MODE | master or slave |
+| POSTGRES_BASE_DIR | /data/postgres |
+| SLAVE_TRIGGER_FILE | postgresql.trigger |
+| SHUTDOWN_SLAVE_FILE | SHUTDOWN_SLAVE |
+| SHUTDOWN_SLAVE_SUCCESS_FILE | SHUTDOWN_SLAVE_SUCCESS |
+| POSTGRES_ENTRYPOINT | /usr/lib/postgresql/9.5/bin/postgres |
+| POSTGRES_OPTIONS | "-D $PGDATA -c config_file=/data/postgres/conf/postgresql.conf"
 
-
-  slave DaemonSet:
-uses slave healthCheck for reinitiation
-
-if `/postgres/SHUTDOWN_SLAVE` exists:
-  watch for `/postgres/SHUTDOWN_SLAVE` and `/postgres/SHUTDOWN_SLAVE_SUCCESSFUL` to disappear
-  wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQLMASTER_SERVICE_HOST` and `POSTGRESQLMASTER_SERVICE_PORT`)
-  write `/postgres/data/recovery.conf`
-  run `pg_basebackup`
-  start postgresql as slave
-else:
-  wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQLMASTER_SERVICE_HOST` and `POSTGRESQLMASTER_SERVICE_PORT`)
-  write `/postgres/data/recovery.conf`
-  run `pg_basebackup`
-  start postgresql as slave
-watch for `/postgres/SHUTDOWN_SLAVE`, if it appears:
-  shutdown postgresql and wait for full exit
-  `touch /postgres/SHUTDOWN_SLAVE_SUCCESSFUL`
-
-#### TODO
-* convert to tmpfs for testing file actions
-* use native go instead of shelling-out
 
 ### Currently we shell-out and rely on the following commands:
-* rm
-* touch
+* `rm`
+* `touch`
+
+## Master `ReplicationController`:
+#### K8s:
+* Set `replicas: 1`
+* Use `PreStop` to `rm /data/postgres/SHUTDOWN_SLAVE /data/postgres/SHUTDOWN_SLAVE_SUCCESSFUL` (in case a node comes back online after a network outage)
+
+Logic:
+* Ensure `POSTGRES_MODE` is set
+* `touch /data/postgres/data/postgresql.trigger`? ( TODO: check if this is needed...)
+* `touch /data/postgres/SHUTDOWN_SLAVE`
+* Wait for `/data/postgres/SHUTDOWN_SLAVE_SUCCESSFUL` to appear
+* `rm /data/postgres/data/postgresql.trigger -rf`? (TODO: check if this is needed...)
+* Start postgresql
+
+
+## Slave `DaemonSet`:
+#### K8s:
+* Use healthCheck for reinitiation
+
+#### Logic:
+* If `/data/postgres/SHUTDOWN_SLAVE` exists:
+> * Watch for `/data/postgres/SHUTDOWN_SLAVE` and `/data/postgres/SHUTDOWN_SLAVE_SUCCESSFUL` to disappear
+> * Wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQLMASTER_SERVICE_HOST` and `POSTGRESQLMASTER_SERVICE_PORT`)
+> * Write `/data/postgres/data/recovery.conf`
+> * Run `pg_basebackup`
+> * Start postgresql
+* Else:
+> * Wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQLMASTER_SERVICE_HOST` and `POSTGRESQLMASTER_SERVICE_PORT`)
+> * Write `/data/postgres/data/recovery.conf`
+> * Run `pg_basebackup`
+> * Start postgresql
+
+* Watch for `/data/postgres/SHUTDOWN_SLAVE`, if it appears:
+> * Shutdown postgresql and wait for full exit
+> * `touch /data/postgres/SHUTDOWN_SLAVE_SUCCESSFUL`
+
+## TODO
+* convert to tmpfs for testing file actions
+* convert to native go instead of shelling-out

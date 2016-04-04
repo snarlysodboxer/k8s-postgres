@@ -9,7 +9,11 @@ import (
 // "os"
 )
 
-func ensureRunningPostgresMaster() {
+type postgresInstance struct {
+	Master bool
+}
+
+func (file *postgresInstance) EnsureRunning() {
 	// Remove triggerFile
 	// TODO see if postgresql.trigger gets changed to postgresql.done
 	// err = os.Remove(triggerFilePath)

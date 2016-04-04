@@ -13,7 +13,7 @@
 > * Set `replicas: 1`
 * Slave:
 > * Use `DaemonSet`
-> * Use healthCheck for reinitiation
+> * Use `healthCheck` for reinitiation
 > * Set `POD_IP` env var using:
 ```
   volumeMounts:
@@ -43,10 +43,13 @@
 
 #### Logic:
 * Ensure `POSTGRES_MODE` is set
-* If master:
+* If master
+
 > * Create trigger file
 > * Port Forward from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `cat /data/postgres/slave_ip`
-* If slave:
+
+* If slave
+
 > * Wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQLMASTER_SERVICE_HOST` and `POSTGRESQLMASTER_SERVICE_PORT`)
 > * Create `recovery.conf` file
 > * Run `pg_basebackup`

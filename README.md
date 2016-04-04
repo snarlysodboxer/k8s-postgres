@@ -8,12 +8,12 @@
 * An optional read-only `postgresqlslave` service can be created to read the slave instances in round robin.
 * Master and Slave share the same data volume (probably `hostPath`, could be a data container) where postgres data is stored.
 * Master/Slaves can be started in either order.
-* Master:
 
+* Master:
 > * Use `ReplicationController`
 > * Set `replicas: 1`
-* Slave:
 
+* Slave:
 > * Use `DaemonSet`
 > * Use `healthCheck` for reinitiation
 > * Set pod IP in `/data/postgres/slave_ip` using:
@@ -45,13 +45,13 @@
 
 #### Logic:
 * Ensure `POSTGRES_MODE` is set
-* If master
 
+* If master
 > * Create trigger file
 > * Check for and wait for `/data/postgres/slave_ip` to show
 > * Port Forward from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `cat /data/postgres/slave_ip`
-* If slave
 
+* If slave
 > * Wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQL_MASTER_SERVICE_HOST` and `POSTGRESQL_MASTER_SERVICE_PORT`)
 > * Create `recovery.conf` file
 > * Run `pg_basebackup`

@@ -31,8 +31,11 @@
               fieldPath: status.podIP
 ```
 
+#### Docker image
+* Build in tcp-proxy at `/tcp-proxy` - https://github.com/lumanetworks/go-tcp-proxy
+
 ### Environment Variables:
-| Env Var | Example Value |
+| Variable | Example Value |
 | --- | --- |
 | POSTGRES_MODE | master or slave |
 | POSTGRES_BASE_DIR | /data/postgres |
@@ -49,7 +52,7 @@
 * If master
 > * Create trigger file
 > * Check for and wait for `/data/postgres/slave_ip` to show
-> * Port Forward from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `cat /data/postgres/slave_ip`
+> * Reverse Proxy from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `/data/postgres/slave_ip`
 
 * If slave
 > * Wait for positive health check from postgres master (reached via service, using env vars `POSTGRESQL_MASTER_SERVICE_HOST` and `POSTGRESQL_MASTER_SERVICE_PORT`)

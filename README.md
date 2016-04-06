@@ -36,7 +36,7 @@
 - Currently we shell-out and rely on the Unix commands `touch` and `nc`
 - Environment Variables
 
-| Variable | Example Value |
+> | Variable | Example Value |
 | --- | --- |
 | POSTGRES_MODE | master or slave |
 | POSTGRES_TRIGGER_FILE | /data/postgres/data/postgresql.trigger |

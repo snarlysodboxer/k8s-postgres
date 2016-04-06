@@ -54,6 +54,17 @@ func TestTouchExisting(test *testing.T) {
 	testFile.Remove()
 }
 
+// Test Remove
+func TestRemove(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileRemove.file")
+	testFile.Touch()
+	testFile.Remove()
+	if _, err := os.Stat(testFile.File.Name()); err == nil {
+		test.Fatal("File was not removed")
+	}
+}
+
 // Test file creation - inotify.IN_CLOSE_WRITE
 func TestWaitForSignalCreate(test *testing.T) {
 	testFile := new(signalFile)

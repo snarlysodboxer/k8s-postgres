@@ -14,8 +14,7 @@
 
 ### Kubernetes Setup
 - Start the Controller Manager with `--pod-eviction-timeout=30s` or something reasonable, as this will be the trigger for failover during a network level outage where the master is running.
-- Create a `postgres_master` `Service` before creating the `ReplicationController` or `DaemonSet`. This will ensure the proper environment variables will be created in 
-the containers below.
+- Create a `postgres_master` `Service` before creating the `ReplicationController` or `DaemonSet` to ensure the proper environment variables will be created in the containers.
 - An optional read-only `postgres_slave` service can be created to read the slave instances in round robin.
 - Master and Slave share the same data volume (probably `hostPath`, could be a data container) where postgres data is stored.
 - Master/Slaves can be started in either order.
@@ -35,7 +34,7 @@ the containers below.
 - Build the `pg-controller` binary, add it to a PostgreSQL image, set it as the Entrypoint
 - Build in tcp-proxy at `/tcp-proxy` - https://github.com/lumanetworks/go-tcp-proxy
 - Environment Variables
-> | Variable | Example Value |
+| Variable | Example Value |
 | --- | --- |
 | POSTGRES_MODE | master or slave |
 | POSTGRES_TRIGGER_FILE | /data/postgres/data/postgresql.trigger |

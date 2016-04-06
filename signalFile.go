@@ -17,23 +17,6 @@ type signalFile struct {
 	Channel chan bool
 }
 
-// Remove deletes a file if it exists, and does nothing if it doesn't.
-func (file *signalFile) Remove() {
-	cmd := exec.Command("rm", file.File.Name(), "-f")
-	err := cmd.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
-	// // TODO this doesn't trigger the signal for some reason
-	// if _, err := os.Stat(file.File.Name()); err == nil {
-	// 	err := os.Remove(file.File.Name())
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }
-	// file.File.Close()
-}
-
 // Touch creates a file if it doesn't exist, and updates it's time stamps if it does.
 func (file *signalFile) Touch() {
 	cmd := exec.Command("touch", file.File.Name())

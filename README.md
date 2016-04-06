@@ -35,7 +35,6 @@
 - Build in tcp-proxy at `/tcp-proxy` - https://github.com/lumanetworks/go-tcp-proxy
 - Currently we shell-out and rely on the Unix commands `touch` and `nc`
 - Environment Variables
-
 > | Variable | Example Value |
 | --- | --- |
 | POSTGRES_MODE | master or slave |

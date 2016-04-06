@@ -71,44 +71,72 @@ func main() {
 	} else {
 		//// Is Slave
 
-		// Wait for positive health check from postgres master
-		success := false
+		// Watch for positive health check from postgres master
+		masterAlive := make(chan bool)
+		defer close(masterAlive)
 		command := "nc"
 		options := fmt.Sprintf("%s %s < /dev/null > /dev/null; [ `echo $?` -eq 0 ]", postgresServiceHost, postgresServicePort)
-		for !success {
-			time.Sleep(1 * time.Second)
-			cmd := exec.Command(command, options)
-			err := cmd.Run()
-			if err == nil {
-				success = true
+		go func() {
+			for {
+				time.Sleep(1 * time.Second)
+				cmd := exec.Command(command, options)
+				err := cmd.Run()
+				if err == nil {
+					masterAlive <- true
+				}
 			}
+		}()
+
+		// Watch for tigger file to exist or appear
+		triggerFile := new(signalFile)
+		triggerFile.File = os.NewFile(0, postgresSlaveIPFile)
+		triggerFile.Channel = make(chan bool)
+		defer close(triggerFile.Channel)
+		triggerFile.Signal = inotify.IN_CLOSE_WRITE
+		if triggerFile.Exists() {
+			<-triggerFile.Channel
+		} else {
+			go triggerFile.WaitForSignal()
 		}
 
-		// Create `recovery.conf` file
-		contents := fmt.Sprintf(
-			"standby_mode = 'on'\nprimary_conninfo = 'host=%s port=%s user=%s password=%s sslmode=require'\ntrigger_file = '%s'\n",
-			postgresServiceHost,
-			postgresServicePort,
-			postgresReplicatorUser,
-			postgresReplicatorPass,
-			postgresTriggerFile,
-		)
-		bytes := []byte(contents)
-		err := ioutil.WriteFile(postgresRecoveryConfFile, bytes, 0640)
-		if err != nil {
-			log.Fatal(err)
-		}
+		// Wait for positive health check from postgres master
+		//   OR
+		// Tiggerfile to exist or appear
+		select {
+		// Run as master
+		case <-triggerFile.Channel:
+			// Start PostgreSQL as master
+			syscall.Exec(postgresEntrypoint, []string{postgresOptions}, []string{})
 
-		// Run `pg_basebackup`
-		command = "/usr/bin/pg_basebackup"
-		options = fmt.Sprintf("-w -h %s -p %s -U %s -D %s -v -x", postgresServiceHost, postgresServicePort, postgresReplicatorUser, postgresDataDir)
-		cmd := exec.Command(command, options)
-		err = cmd.Run()
-		if err != nil {
-			log.Fatal(err)
-		}
+		// Run as slave
+		case <-masterAlive:
+			// Create `recovery.conf` file
+			contents := fmt.Sprintf(
+				"standby_mode = 'on'\nprimary_conninfo = 'host=%s port=%s user=%s password=%s sslmode=require'\ntrigger_file = '%s'\n",
+				postgresServiceHost,
+				postgresServicePort,
+				postgresReplicatorUser,
+				postgresReplicatorPass,
+				postgresTriggerFile,
+			)
+			bytes := []byte(contents)
+			err := ioutil.WriteFile(postgresRecoveryConfFile, bytes, 0640)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		// Start PostgreSQL
-		syscall.Exec(postgresEntrypoint, []string{postgresOptions}, []string{})
+			// Run `pg_basebackup`
+			command = "/usr/bin/pg_basebackup"
+			options = fmt.Sprintf("-w -h %s -p %s -U %s -D %s -v -x", postgresServiceHost, postgresServicePort, postgresReplicatorUser, postgresDataDir)
+			cmd := exec.Command(command, options)
+			err = cmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Start PostgreSQL as slave
+			syscall.Exec(postgresEntrypoint, []string{postgresOptions}, []string{})
+		}
 	}
+
 }

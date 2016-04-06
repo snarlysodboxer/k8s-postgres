@@ -7,6 +7,35 @@ import (
 	"time"
 )
 
+// Test file exists
+func TestExistsTrue(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileExistsTrue.file")
+
+	// Create
+	testFile.Touch()
+
+	if !testFile.Exists() {
+		test.Fatal("Got file doesn't exist, but it does exist")
+	}
+
+	// Cleanup
+	testFile.Remove()
+}
+
+// Test file does not exist
+func TestExistsFalse(test *testing.T) {
+	testFile := new(signalFile)
+	testFile.File = os.NewFile(0, "./testFileExistsFalse.file")
+
+	// Remove any existing
+	testFile.Remove()
+
+	if testFile.Exists() {
+		test.Fatal("Got file exists, but it does not exist")
+	}
+}
+
 // Test new file creation
 func TestTouchNew(test *testing.T) {
 	testFile := new(signalFile)

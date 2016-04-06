@@ -17,6 +17,15 @@ type signalFile struct {
 	Channel chan bool
 }
 
+// Exists returns true or false if a file exists or not
+func (file *signalFile) Exists() bool {
+	if _, err := os.Stat(file.File.Name()); err == nil {
+		return true
+	} else {
+		return false
+	}
+}
+
 // Remove deletes a file if it exists, and does nothing if it doesn't.
 func (file *signalFile) Remove() {
 	cmd := exec.Command("rm", file.File.Name(), "-f")

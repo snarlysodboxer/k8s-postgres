@@ -20,15 +20,15 @@
 - Master/Slaves can be started in either order.
 
 - Master:
-> - Use `ReplicationController`
-> - Set `replicas: 1`
-> - Set `containerPort: 5432`
+  - Use `ReplicationController`
+  - Set `replicas: 1`
+  - Set `containerPort: 5432`
 
 - Slave:
-> - Use `DaemonSet` (1 per `minion`)
-> - Set `healthCheck` for reinitiation (checking port will catch crashed/stopped postgres, but will miss out of sync.)
-> - Set `containerPort: 5433`
-> - Set pod IP in `/data/postgres/slave_ip` using the `DownwardAPI`
+  - Use `DaemonSet` (1 per `minion`)
+  - Set `healthCheck` for reinitiation (checking port will catch crashed/stopped postgres, but will miss out of sync.)
+  - Set `containerPort: 5433`
+  - Set pod IP in `/data/postgres/slave_ip` using the `DownwardAPI`
 
 ### Docker Image Setup
 - Build the `pg-controller` binary, add it to a PostgreSQL image, set it as the Entrypoint
@@ -36,7 +36,7 @@
 - Currently we shell-out and rely on the Unix commands `touch` and `nc`
 - Environment Variables
 
-> | Variable | Example Value |
+  | Variable | Example Value |
 | --- | --- |
 | POSTGRES_MODE | master or slave |
 | POSTGRES_TRIGGER_FILE | /data/postgres/data/postgresql.trigger |
@@ -53,15 +53,20 @@
 ### Runtime Logic:
 - Ensure `POSTGRES_MODE` is set
 - If master
-> - Create trigger file
-> - Check for and wait for `/data/postgres/slave_ip` to show
-> - Reverse Proxy from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `/data/postgres/slave_ip`
+  - Create trigger file
+  - Check for and wait for `/data/postgres/slave_ip` to show
+  - Reverse Proxy from `DaemonSet` ("slave") through `ReplicationController` ("master") - get IP from `/data/postgres/slave_ip`
 
 - If slave
-> - Wait for positive health check from postgres master (reached via service, using env vars `POSTGRES_MASTER_SERVICE_HOST` and `POSTGRES_MASTER_SERVICE_PORT`)
-> - Create `recovery.conf` file
-> - Run `pg_basebackup`
-> - Start PostgreSQL
+  - Wait for either
+    - Positive health check from postgres master (reached via service, using env vars `POSTGRES_MASTER_SERVICE_HOST` and `POSTGRES_MASTER_SERVICE_PORT`), *OR*
+    - Trigger file to exist or appear
+  _ When Positive health check
+    - Create `recovery.conf` file
+    - Run `pg_basebackup`
+    - Start PostgreSQL as slave
+  - When Trigger file
+    - Start PostgreSQL as master
 
 ## TODO
 - convert to tmpfs for testing file actions

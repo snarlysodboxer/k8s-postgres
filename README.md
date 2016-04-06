@@ -33,7 +33,9 @@
 ### Docker Image Setup
 - Build the `pg-controller` binary, add it to a PostgreSQL image, set it as the Entrypoint
 - Build in tcp-proxy at `/tcp-proxy` - https://github.com/lumanetworks/go-tcp-proxy
+- Currently we shell-out and rely on the Unix commands `touch` and `nc`
 - Environment Variables
+
 | Variable | Example Value |
 | --- | --- |
 | POSTGRES_MODE | master or slave |
@@ -47,7 +49,6 @@
 | POSTGRES_MASTER_SERVICE_PORT | set automatically by the "postgres_master" service |
 | POSTGRES_REPLICATOR_USER | replicator |
 | POSTGRES_REPLICATOR_PASS | your pass |
-- Currently we shell-out and rely on the Unix commands `touch` and `nc`
 
 ### Runtime Logic:
 - Ensure `POSTGRES_MODE` is set

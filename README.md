@@ -9,6 +9,7 @@
 - Failover re-connects all slaves to the new master
 - Let K8s `ReplicationController` choose where the master goes
 - Be provider agnostic (Don't use GCE Persistent Volumes or AWS EBS Volumes)
+- Don't reinvent the wheel, use K8s as much as possible
 
 ## How we do it
 
@@ -51,7 +52,7 @@
 | POSTGRES_REPLICATOR_PASS | your pass |
 
 ### Runtime Logic:
-- Ensure `POSTGRES_MODE` is set
+- Ensure `POSTGRES_MODE` is set to determine master vs slave
 - If master
   - Create trigger file
   - Check for and wait for `/data/postgres/slave_ip` to show
@@ -61,7 +62,7 @@
   - Wait for either
     - Positive health check from postgres master (reached via service, using env vars `POSTGRES_MASTER_SERVICE_HOST` and `POSTGRES_MASTER_SERVICE_PORT`), *OR*
     - Trigger file to exist or appear
-  _ When Positive health check
+  - When Positive health check
     - Create `recovery.conf` file
     - Run `pg_basebackup`
     - Start PostgreSQL as slave
